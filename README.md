@@ -1,2 +1,2 @@
 # cloud_payment_gateway
-a payment gateway that stores all the transactions in cloud
+a payment gateway where the transactions are securely processed and stored in the cloud
