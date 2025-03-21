@@ -1,0 +1,67 @@
+
+from flask import Flask, request, jsonify
+from pyngrok import ngrok
+import threading
+import sqlite3
+import random
+
+
+app = Flask(__name__)
+
+
+try:
+    ngrok_tunnel = ngrok.connect(5000)
+    print(f"🚀 Public URL: {ngrok_tunnel.public_url}")
+except Exception as e:
+    print("❌ Error setting up ngrok:", str(e))
+
+
+def init_db():
+    conn = sqlite3.connect(':memory:', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE transactions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT,
+                        amount REAL,
+                        status TEXT,
+                        payment_method TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    return conn
+
+db_conn = init_db()
+
+
+@app.route('/process-payment', methods=['POST'])
+def process_payment():
+    data = request.json
+    user_id = data.get("user_id")
+    amount = data.get("amount")
+    payment_method = data.get("payment_method")
+
+    
+    payment_status = "success" if random.random() > 0.2 else "failed"
+
+    
+    cursor = db_conn.cursor()
+    cursor.execute("INSERT INTO transactions (user_id, amount, status, payment_method) VALUES (?, ?, ?, ?)",
+                   (user_id, amount, payment_status, payment_method))
+    db_conn.commit()
+
+    return jsonify({"message": "Transaction processed", "status": payment_status})
+
+
+@app.route('/transactions', methods=['GET'])
+def get_transactions():
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT * FROM transactions")
+    transactions = cursor.fetchall()
+    return jsonify(transactions)
+
+
+def run_flask():
+    app.run(host="0.0.0.0", port=5000)
+
+
+thread = threading.Thread(target=run_flask)
+thread.start()
